@@ -19,12 +19,10 @@ int main()
 		int count =0;
 		int j=0;
 		int temp =0;
-		//char temp[4];
 		for(string::iterator it = line.begin(); it!= line.end(); it++){
 			if(*it == 44) count++;
 			if(count == 3){
-				if(*it > '0' && *it < '9') {
-					//cout<<(*(it));
+				if(*it >= '0' && *it <= '9') {
 					temp*=10;
 					temp += *it - '0';					
 				}	
