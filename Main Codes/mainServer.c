@@ -22,33 +22,58 @@ int getFileSize(FILE *fp)
 char* getPartition(const char* filename,int split_size,int partno)
 {
 	FILE *fp = fopen(filename,"r");
-	int byteToReach = split_size*partno;
 	
-	fseek(fp,byteToReach,SEEK_SET);
-	/*while(fgetc(fp)!='\n')
-	{	
-		printf("%c",fgetc(fp));		
-		fp--;
-	} */  //this is the right pointer
-	rp=fp;
-	
-	//now setting the left pointer
-	byteToReach = byteToReach - split_size;
-	printf("%d",byteToReach);
-	fseek(fp,byteToReach,SEEK_SET);
-/*	if(byteToReach!=0)
-		while(fgetc(fp)!=',')
-		{
-			printf("%c",fgetc(fp));		
-			fp--;	
-		}*/
-	lp=++fp;
-	
-//	char* partition = (char*)malloc(
-	/*for(FILE* i=lp;i<=rp;i++)
+	if(fp==NULL)
 	{
-		printf("%c",fgetc(i));		
-	}*/	
+		printf("File doensn't exist\n");
+		return NULL;
+	}
+	
+	int byteToReach = split_size*partno;
+	FILE *start,*end,*temp;
+	start=end=fp;
+	int i=0;
+	fseek(end,byteToReach,SEEK_SET);
+	if(partno!=WORKERS)
+	{
+			while(fgetc(end)!='\n')
+			{			
+				i++;
+				fseek(end,byteToReach-i,SEEK_SET);
+			}   //this is the end pointer
+	}
+	else //pickup the last record
+	{
+		fseek(end,0,SEEK_END);
+		
+	}
+	long int end_point=ftell(end);
+	
+	
+	//now setting the start pointer
+	byteToReach = byteToReach - split_size;
+	i=0;
+	fseek(start,byteToReach-i,SEEK_SET);
+	if(byteToReach!=0)
+	{
+		while(fgetc(start)!='\n')
+		{
+			i++;
+			fseek(start,byteToReach-i,SEEK_SET);
+			
+		}
+		fseek(start,0,SEEK_CUR);
+	}
+	int start_point=ftell(start);
+	FILE *j=start;
+	
+	int c=end_point-start_point-1;
+	while(c)
+	{
+		printf("%c",fgetc(j));
+		c--;
+		fseek(j,0,SEEK_CUR);  //* j increments automatically
+	}
 	
 	return NULL;
 }
@@ -98,16 +123,19 @@ int main()
 			
 				int n = recv(sd,&buf,sizeof(buf),0);
 				fseek(fp,file_size,SEEK_SET);	
-				fwrite (buf , sizeof(char),n,fp);
+				fwrite (buf,sizeof(char),n,fp);
 				file_size+=n;
 			}
 			
 			//now we have received the file, 
 			file_size = getFileSize(fp);  
 			int splilt_size= file_size/WORKERS; //in bytes
-			char *buffer = getPartition("dataset_main_server.txt",split_size,partno); //partno starts from one
 			
-			
+			for(int partno=1;partno<=WORKERS;partno++)
+			{
+				char *buffer = getPartition("dataset_main_server.txt",split_size,partno); 
+				printf("\n$\n");
+			}
 			close(sd);
 			exit(0);
 		}
