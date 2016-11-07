@@ -11,9 +11,10 @@
 #include<time.h>
 #include<iostream>
 #include<string>
-#define PORTNO 7000
+#define PORTNO 6969
 #define BUF_SIZE 8
 using namespace std;
+#include "helper.h"
 
 void printString(char* buf,int size)
 {
@@ -57,51 +58,22 @@ void readSend(FILE* fp,int sd)
 	 free(buf);
 }
 
-char * toArray(long int number)
-{
-        long int n = log10(number) + 1;
-        long int i;
-        char *numberArray = (char*)calloc(n, sizeof(char));
-        for (i = 0; i < n; ++i, number /= 10 )
-        {
-            numberArray[i] = (number % 10)+'0';   //sending number in reverse, in character form
-        }
-        numberArray[i]='\0';
-        return numberArray;
-
-}
-
-void sendFileSize(FILE *fp,int sd)
-{
-	fseek(fp,0,SEEK_END);
-	long int fsize = ftell(fp);   //total no. of bytes in file	
-
-	int rem=fsize%BUF_SIZE;
-	if(rem!=0)
-		fsize=(fsize/BUF_SIZE)+1;
-	else
-		fsize=(fsize/BUF_SIZE);
-	cout<<"value - "<<fsize<<endl;
-	char *arr = toArray(fsize);
-	send(sd,arr,sizeof(arr),0);
-}
-
 int main()
 {
 	int sd,i;
 	struct sockaddr_in addrs;
 	sd=socket(AF_INET, SOCK_STREAM,0);
 	addrs.sin_family=AF_INET;
-	addrs.sin_addr.s_addr=inet_addr("192.168.0.102");    //main server ip address
+	addrs.sin_addr.s_addr=inet_addr("127.0.0.1");    //main server ip address
 	addrs.sin_port=htons(PORTNO);
 	int len=sizeof(addrs);
 	int result=connect(sd,(struct sockaddr *)&addrs,len);
 	
 	//open file
-	FILE *fp = fopen("../Dataset/dataset.txt","r");
+	FILE *fp = fopen("dataset.txt","r");
 	
 	//send size of file
-	sendFileSize(fp,sd);
+	sendIterationCount(fp,sd,"");
 	
 	//read a file, 8 bytes at a time then send them one by one
 	readSend(fp,sd);
