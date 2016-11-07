@@ -98,7 +98,7 @@ int main()
 	int result=connect(sd,(struct sockaddr *)&addrs,len);
 	
 	//open file
-	FILE *fp = fopen("purchases.txt","r");
+	FILE *fp = fopen("../Dataset/dataset.txt","r");
 	
 	//send size of file
 	sendFileSize(fp,sd);
