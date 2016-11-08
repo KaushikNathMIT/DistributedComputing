@@ -10,9 +10,6 @@
 #include<pthread.h>
 #include<arpa/inet.h>
 #include<time.h>
-#define BUF_SIZE 8
-#define PORTNO 6969
-#define FILENAME "dataset_main_server.txt"
 #include "helper.h"
 
 using namespace std;
@@ -22,33 +19,25 @@ void *startWorker(void * param)
 {
 	cout<<"thread started\n";
 	WorkerParams * p=(WorkerParams *)param;
-	string partition = getPartition(FILENAME,p->split_size,p->partno); 
+	string partition = getPartition(MAIN_SERVER_SOURCE,p->split_size,p->partno); 
+	cout<<"Parititon="<<partition<<endl;
 	cout<<"partition in thread done\n";
-	
 	//create client socket to send data to worker server
 	int sd;
 	struct sockaddr_in addrs;
 	sd=socket(AF_INET, SOCK_STREAM,0);
 	addrs.sin_family=AF_INET;
+	addrs.sin_port=htons(WORKER_SERVER_PORT);
+	addrs.sin_addr.s_addr=inet_addr(p->ip);   //worker server ip address
 	
-	if(p->partno==1)
-	{
-		addrs.sin_addr.s_addr=inet_addr("192.168.0.102");
-		addrs.sin_port=htons(7500);
-		    //worker server ip address
-	}
-	else
-	{
-		addrs.sin_addr.s_addr=inet_addr("127.0.0.1");    //worker server ip address
-		addrs.sin_port=htons(7500);
-	}
-
 	int len=sizeof(addrs);
 	
 	int result=connect(sd,(struct sockaddr *)&addrs,len);
 
 
 	sendIterationCount(NULL,sd,partition);	
+	
+	send(sd,p->ch,sizeof(p->ch),0); //send choice to worker
 	
 	//sending in chunks of 8 bytes  
 	cout<<partition.length()<<endl;
@@ -58,9 +47,7 @@ void *startWorker(void * param)
 	{
 		for(int j=0;j<BUF_SIZE;j++)
 		{
-			//cout<<partition[k];
 			buf[j]=partition[k];
-//			cout<<buf[j];
 			k++;
 		}
 		c++;
@@ -75,6 +62,15 @@ void *startWorker(void * param)
 	cout<<"\n"<<send(sd,buf,leftover,0);
 	cout<<"Sent";
 	
+	
+	//receive result from individual threads in character array
+	char localResult[100];
+	recv(sd,&localResult,sizeof(localResult),0);
+	printf("in char array %s",localResult);
+	//get double value from char array
+	p->result=strtod(localResult,NULL);
+	cout<<"in double="<<p->result<<endl;
+	
 	pthread_exit(0);
 }
 
@@ -84,6 +80,7 @@ int main()
 	int sd,ls;
 	socklen_t clen;
 	char buf[BUF_SIZE];
+	char ch[1];
 	char *t;
 	FILE *fp;
 	struct sockaddr_in sadd,cadd;
@@ -92,7 +89,7 @@ int main()
 	ls=socket(AF_INET, SOCK_STREAM,0);
 	sadd.sin_family=AF_INET;
 	sadd.sin_addr.s_addr=INADDR_ANY;
-	sadd.sin_port=htons(PORTNO);
+	sadd.sin_port=htons(MAIN_SERVER_PORT);
 	
 	bind(ls,(struct sockaddr *)&sadd, sizeof(sadd));
 	
@@ -108,7 +105,11 @@ int main()
 			int file_size=0;
 			int nbytes=recv(sd,&buf,sizeof(buf),0);  //getting file size
 			long int nIterations = getIterationCount(buf); //receive number of bytes and buffer,return the no. iteration 
-			fp=fopen(FILENAME,"w");
+			
+			recv(sd,&ch,sizeof(ch),0); //receve choice entered by user
+			cout<<"Choice entered - "<<ch[0]<<endl;
+			
+			fp=fopen(MAIN_SERVER_SOURCE,"w");
 			int n;
 			while(nIterations--)
 			{
@@ -131,18 +132,24 @@ int main()
 			pthread_attr_init(&attr);
 
 			cout<<"Creating Threads\n";
+			char* iplist[WORKERS];
+			getIpList(iplist);
 			WorkerParams workerinfo[WORKERS];			
-			for(int partno=1;partno<=WORKERS;partno++)
+			for(int partno=0;partno<WORKERS;partno++)
 			{  
-				workerinfo[partno-1].split_size=split_size;
-				workerinfo[partno-1].partno=partno;
-				pthread_create(&thread[partno-1],&attr,startWorker,&workerinfo[partno-1]);
-			 //pthread_join(thread[partno-1], NULL);
+				workerinfo[partno].split_size=split_size;
+				workerinfo[partno].partno=partno+1;
+				workerinfo[partno].ip=iplist[0];
+				workerinfo[partno].ch[0]=ch[0];
+				pthread_create(&thread[partno],&attr,startWorker,&workerinfo[partno]);
 			}
 			
-			//sleep(10);
 			for (int i=0;i<WORKERS;i++)
        			pthread_join(thread[i], NULL);
+       			
+       		//answer is contained workerinfo->result  of all structs
+       		
+       			
 			
 			close(sd);
 			exit(0);
