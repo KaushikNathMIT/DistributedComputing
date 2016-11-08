@@ -11,8 +11,6 @@
 #include<time.h>
 #include<iostream>
 #include<string>
-#define PORTNO 6969
-#define BUF_SIZE 8
 using namespace std;
 #include "helper.h"
 
@@ -51,7 +49,7 @@ void readSend(FILE* fp,int sd)
 	long int leftover = fsize%BUF_SIZE;
 	if(writeContentsToBuf(&fp,buf,bytes_written,leftover)!=leftover)
 		printf("Bytes read unsuccesful\n");	 	 	
-	int n=send(sd,buf,leftover,0);
+ 		int n=send(sd,buf,leftover,0);
 	if(n!=leftover)
 	 	printf("Send unsucessful\n");
 	 bytes_written+=BUF_SIZE;
@@ -65,15 +63,21 @@ int main()
 	sd=socket(AF_INET, SOCK_STREAM,0);
 	addrs.sin_family=AF_INET;
 	addrs.sin_addr.s_addr=inet_addr("127.0.0.1");    //main server ip address
-	addrs.sin_port=htons(PORTNO);
+	addrs.sin_port=htons(MAIN_SERVER_PORT);
 	int len=sizeof(addrs);
 	int result=connect(sd,(struct sockaddr *)&addrs,len);
 	
 	//open file
-	FILE *fp = fopen("dataset.txt","r");
+	FILE *fp = fopen(CLIENT_SOURCE,"r");
 	
 	//send size of file
 	sendIterationCount(fp,sd,"");
+	
+	//send choice 
+	char ch[1];
+	cout<<"1-Addition\n2-Average\nEnter choice\n";
+	cin>>ch[0];
+	send(sd,ch,sizeof(ch),0);
 	
 	//read a file, 8 bytes at a time then send them one by one
 	readSend(fp,sd);

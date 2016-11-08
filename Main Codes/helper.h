@@ -13,23 +13,37 @@
 #include<pthread.h>
 #include<arpa/inet.h>
 #include<time.h>
-using namespace std;
-#define WORKERS 2
+#define WORKERS 1
 #define BUF_SIZE 8
+#define MAIN_SERVER_PORT 6969
+#define WORKER_SERVER_PORT 7500
+#define MAIN_SERVER_SOURCE "dataset_main.txt"
+#define CLIENT_SOURCE "dataset.txt"
+#define WORKER_SERVER_SOURCE "dataset_worker.txt"
+using namespace std;
 
-struct WorkerParams  //we will send a pointer to structure while creating thread
+struct WorkerParams  //we will send a pointer to this structure while creating thread
 {
 	int split_size;
 	int partno;
 	int portno;
-	
+	const char* ip;
+	double result;
+	char ch[1];
 };
 
+void getIpList(char* iplist[])
+{
+	iplist[0]="127.0.0.1";
+}
 
-int columnExtractor(char* filePath, int columnNumber)
+
+
+
+int columnExtractor(const char* filePath, int columnNumber,int **values)
 {
 	char c;
-	int arr[100000];
+	*values = (int *)malloc(100000*sizeof(int));
 	int k=0;
 	ifstream in;
 	in.open(filePath);
@@ -54,12 +68,10 @@ int columnExtractor(char* filePath, int columnNumber)
 			}
 		}
 		//cout<<temp<<"\n";
-		arr[k++] = temp;
+		*(*values+k) = temp;
+		k++;
 	}
-	for(int i=0;i<k;i++){
-		cout<<arr[i]<<"\n";
-	}
-	return 0;
+	return k;
 }
 
 
@@ -153,6 +165,18 @@ char * toArray(long int number)
         numberArray[i]='\0';
         return numberArray;
 
+}
+
+char * toArray(double number)
+{
+	cout<<number<<endl;
+	char *tmp=(char *)malloc(100*sizeof(char));
+	ostringstream strs;
+	strs << number;
+	string str = strs.str();
+	strncpy(tmp,str.c_str(),sizeof(tmp));
+	tmp[sizeof(tmp)-1]=0;
+	return tmp;
 }
 
 void sendIterationCount(FILE *fp,int sd,string partition)

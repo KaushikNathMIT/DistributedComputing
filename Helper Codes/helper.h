@@ -26,7 +26,7 @@ struct WorkerParams  //we will send a pointer to structure while creating thread
 };
 
 
-int columnExtractor(char* filePath, int columnNumber,int *values)
+int columnExtractor(const char* filePath, int columnNumber,int *values)
 {
 	char c;
 	values = new int[100000];
