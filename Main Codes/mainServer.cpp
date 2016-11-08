@@ -89,7 +89,20 @@ int main()
        			pthread_join(thread[i], NULL);
        			
        		//answer is contained workerinfo->result  of all structs
-       		
+       		double sum=0;
+       		for(int i=0;i<WORKERS;i++)
+       		{
+       			sum+=workerinfo[i].result;
+       		}
+       		double ans=0;
+       		if(ch[0]=='1')
+       		{
+       			ans=sum;	
+       		}
+       		else
+       			ans= sum/WORKERS;
+       		char *answer = toArray(ans);
+       		send(sd,answer,sizeof(answer),0);
        			
 			
 			close(sd);

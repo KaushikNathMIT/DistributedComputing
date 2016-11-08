@@ -15,8 +15,8 @@
 #include <time.h>
 #define WORKERS 1
 #define BUF_SIZE 8
-#define MAIN_SERVER_PORT 6969
-#define WORKER_SERVER_PORT 7500
+#define MAIN_SERVER_PORT 6998
+#define WORKER_SERVER_PORT 7810
 #define MAIN_SERVER_SOURCE "dataset_main.txt"
 #define CLIENT_SOURCE "dataset.txt"
 #define WORKER_SERVER_SOURCE "dataset_worker.txt"
@@ -58,23 +58,37 @@ int columnExtractor(const char* filePath, int columnNumber,double **values)
  		string temp="";
 		int count =0;
 		int j=0;
-//		int temp =0;
 		for(string::iterator it = line.begin(); it!= line.end(); it++){
 			if(*it == ',') count++;
 			if(count == columnNumber){
 				if((*it >= '0' && *it <= '9') || *it=='.') {
-//					temp*=10;
-	//				temp += *it - '0';					
 					temp+=*it;
 				}	
 			}
 		}
-		
-		*(*values+k) = stod(temp);
-		k++;
+		if(temp.compare("")!=0)
+		{
+			try
+			{
+				*(*values+k) = stod(temp);
+				k++;
+			}
+			catch (const std::invalid_argument&) 
+			{
+				cout<<"here"<<endl;
+				throw;
+			} 
+			catch (const std::out_of_range&) 
+			{
+				cout<<"here"<<endl;
+				throw;
+    		}
+    	}
+    	
 	}
 	return k;
 }
+
 
 
 string getPartition(const char* filename,int split_size,int partno)
@@ -173,14 +187,18 @@ char * toArray(double number)
 {
 	cout<<number<<endl;
 	char *tmp=(char *)malloc(100*sizeof(char));
-	ostringstream strs;
-	strs << number;
-	string str = strs.str();
-	strncpy(tmp,str.c_str(),sizeof(tmp));
-	tmp[sizeof(tmp)-1]=0;
+	sprintf(tmp, "%.2e", number);
+	for(int i=0;tmp[i]!='\0';i++)
+	{
+		cout<<tmp[i]<<" ";
+	}
+	cout<<endl;
+	//ostringstream strs;
+	//string str = strs.str();
+	//strncpy(tmp,str.c_str(),sizeof(tmp));
+	//tmp[sizeof(tmp)-1]=0;
 	return tmp;
 }
-
 void sendIterationCount(FILE *fp,int sd,string partition)
 {
 	char *arr=NULL;
@@ -310,44 +328,42 @@ void *startWorker(void * param)
 	pthread_exit(0);
 }
 
+double avgColumn(double* array,int sizeArray)
+{
+	double sum=0.0;
+	for(int i=0;i<sizeArray;i++)
+	{
+		sum+=array[i];
+	}
+	return sum/sizeArray;
+}
+
+double addColumn(double* array,int sizeArray)
+{
+	double sum=0.0;
+	for(int i=0;i<sizeArray;i++)
+	{
+		sum+=array[i];
+	}
+	return sum;
+}
+
+
 //worker
-/*long response(int query,int *array,int sizeArray,string str[])
+double response(int query,double *array,int sizeArray)
 {
 
-	if(ch<=4) //related to column, so we need column extractor
-	{
-		st
-	}
 	switch(query)
 	{
 		case 1:
-			return addColumn();
+				return addColumn(array,sizeArray);
 		case 2:
-			avgColumn();
-			break;
-		case 3:
-			maxColumn();
-		case 4:
-			minColumn();
-		case 5:
-			sortRows();
+				return avgColumn(array,sizeArray);
 	}
-	int i;
-	char *g;
-	long sum=0;
-	cout<<sizeArray<<endl;
-	if(array)
-	{	
-		if(query==1||query==2)
-		{
-			for(i=0;i<sizeArray;i++)
-			{	
-				sum+=(long)array[i];
-			}
-		}
-		return sum;
-	}
-}*/
+	
+	
+}
+
 
 
 

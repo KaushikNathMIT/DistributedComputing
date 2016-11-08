@@ -16,7 +16,8 @@ using namespace std;
 
 
 
-		
+
+
 int main()
 {
 	int sd,ls;
@@ -25,7 +26,7 @@ int main()
 	char ch[1];
 	char *resultBuf;
 	char *t;
-	int *value=NULL;
+	double *value=NULL;
 	string str[100000];
 	FILE *fp;
 	struct sockaddr_in sadd,cadd;
@@ -60,12 +61,14 @@ int main()
 	fflush(fp);
 	printf("%ld file size=\n",file_size);
 	
-	//int sizeArray=columnExtractor(WORKER_SERVER_SOURCE,3,&value);
-	//double resp=response(ch[0]-'0',value,sizeArray,str);
-	//cout<<resp<<endl;
-	double resp=123.47548594;
+	int sizeArray=columnExtractor(WORKER_SERVER_SOURCE,1,&value);
+	double resp=response(ch[0]-'0',value,sizeArray);
+	//double resp=123578875578;
+//	double resp=121278988.832322;
 	resultBuf=toArray(resp);
-	cout<<resultBuf<<endl;
+	cout<<"Result buf="<<resultBuf<<endl;
+	//send length
+	//sendIterationCount(NULL,sd,response)
 	send(sd,resultBuf,sizeof(resultBuf),0);
 	close(sd);
 	return 0;

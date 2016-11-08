@@ -17,13 +17,14 @@ using namespace std;
 int main()
 {
 	int sd,i;
+	char result[1000];
 	struct sockaddr_in addrs;
 	sd=socket(AF_INET, SOCK_STREAM,0);
 	addrs.sin_family=AF_INET;
 	addrs.sin_addr.s_addr=inet_addr("127.0.0.1");    //main server ip address
 	addrs.sin_port=htons(MAIN_SERVER_PORT);
 	int len=sizeof(addrs);
-	int result=connect(sd,(struct sockaddr *)&addrs,len);
+	connect(sd,(struct sockaddr *)&addrs,len);
 	
 	//open file
 	FILE *fp = fopen(CLIENT_SOURCE,"r");
@@ -39,6 +40,10 @@ int main()
 	
 	//read a file, 8 bytes at a time then send them one by one
 	readSend(fp,sd);
+	recv(sd,&result,sizeof(result),0);
+	
+	result[8]='\0';
+	printf("%s",result);
 	//getting timestamp in return
 	//int n = recv(sd,&buf,sizeof(buf),0);
 //	printf("The server time is\n");
