@@ -14,48 +14,6 @@
 using namespace std;
 #include "helper.h"
 
-void printString(char* buf,int size)
-{
-	for(int i=0;i<size;i++)
-		printf("%c",buf[i]);
-}
-
-int writeContentsToBuf(FILE **fp,char *buf,long int bytes_written,int size)
-{
-
-	fread(buf,size,1, *fp); /* Read 1 chunk of size bytes from fp into buffer */
-	return size;
-}
-
-void readSend(FILE* fp,int sd)
-{
-
-	long int bytes_written=0;
-	fseek(fp,0,SEEK_END);
-	long int fsize = ftell(fp);   //total no. of bytes in file
-	rewind(fp);
-	char *buf = (char*) malloc(BUF_SIZE * sizeof(*buf)); //using this same buf
-	for(long int i=0;i<fsize/BUF_SIZE;i++) //full size buffers
-	{
-	 	 if(writeContentsToBuf(&fp,buf,bytes_written,BUF_SIZE) != BUF_SIZE)  //error checking
-	 	 	printf("Bytes read unsuccesful\n");
-	 	 //sleep(0.01);	 	 	
-	 	 int n=send(sd,buf,BUF_SIZE,0);
-	 	 if(n!=BUF_SIZE)
-	 	 	printf("Send unsucessful\n");
-	 	 bytes_written+=BUF_SIZE;
-	 	 fseek(fp,bytes_written,SEEK_SET);
-	}
-	long int leftover = fsize%BUF_SIZE;
-	if(writeContentsToBuf(&fp,buf,bytes_written,leftover)!=leftover)
-		printf("Bytes read unsuccesful\n");	 	 	
- 		int n=send(sd,buf,leftover,0);
-	if(n!=leftover)
-	 	printf("Send unsucessful\n");
-	 bytes_written+=BUF_SIZE;
-	 free(buf);
-}
-
 int main()
 {
 	int sd,i;

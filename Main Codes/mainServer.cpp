@@ -15,65 +15,6 @@
 using namespace std;
 
 
-void *startWorker(void * param)
-{
-	cout<<"thread started\n";
-	WorkerParams * p=(WorkerParams *)param;
-	string partition = getPartition(MAIN_SERVER_SOURCE,p->split_size,p->partno); 
-	cout<<"Parititon="<<partition<<endl;
-	cout<<"partition in thread done\n";
-	//create client socket to send data to worker server
-	int sd;
-	struct sockaddr_in addrs;
-	sd=socket(AF_INET, SOCK_STREAM,0);
-	addrs.sin_family=AF_INET;
-	addrs.sin_port=htons(WORKER_SERVER_PORT);
-	addrs.sin_addr.s_addr=inet_addr(p->ip);   //worker server ip address
-	
-	int len=sizeof(addrs);
-	
-	int result=connect(sd,(struct sockaddr *)&addrs,len);
-
-
-	sendIterationCount(NULL,sd,partition);	
-	
-	send(sd,p->ch,sizeof(p->ch),0); //send choice to worker
-	
-	//sending in chunks of 8 bytes  
-	cout<<partition.length()<<endl;
-	char buf[BUF_SIZE];
-	long int k=0,c=0;
-	for(long int i=0;i<partition.length()/BUF_SIZE;i++)
-	{
-		for(int j=0;j<BUF_SIZE;j++)
-		{
-			buf[j]=partition[k];
-			k++;
-		}
-		c++;
-		send(sd,buf,sizeof(buf),0);
-	}
-	cout<<c<<endl;
-	int leftover = partition.length()%BUF_SIZE; 
-	for(int i=0;i<leftover;i++)
-	{
-		buf[i]=partition[k++];
-	}
-	cout<<"\n"<<send(sd,buf,leftover,0);
-	cout<<"Sent";
-	
-	
-	//receive result from individual threads in character array
-	char localResult[100];
-	recv(sd,&localResult,sizeof(localResult),0);
-	printf("in char array %s",localResult);
-	//get double value from char array
-	p->result=strtod(localResult,NULL);
-	cout<<"in double="<<p->result<<endl;
-	
-	pthread_exit(0);
-}
-
 
 int main()
 {

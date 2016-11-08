@@ -15,25 +15,7 @@ using namespace std;
 
 
 
-long response(int query,int *array,int sizeArray,string str[])
-{
 
-	int i;
-	char *g;
-	long sum=0;
-	cout<<sizeArray<<endl;
-	if(array)
-	{	
-		if(query==1||query==2)
-		{
-			for(i=0;i<sizeArray;i++)
-			{	
-				sum+=(long)array[i];
-			}
-		}
-		return sum;
-	}
-}
 		
 int main()
 {
@@ -78,10 +60,10 @@ int main()
 	fflush(fp);
 	printf("%ld file size=\n",file_size);
 	
-	int sizeArray=columnExtractor(WORKER_SERVER_SOURCE,3,&value);
-	double resp=response(ch[0]-'0',value,sizeArray,str);
-	cout<<resp<<endl;
-	resp=123.47548594;
+	//int sizeArray=columnExtractor(WORKER_SERVER_SOURCE,3,&value);
+	//double resp=response(ch[0]-'0',value,sizeArray,str);
+	//cout<<resp<<endl;
+	double resp=123.47548594;
 	resultBuf=toArray(resp);
 	cout<<resultBuf<<endl;
 	send(sd,resultBuf,sizeof(resultBuf),0);

@@ -13,23 +13,37 @@
 #include<pthread.h>
 #include<arpa/inet.h>
 #include<time.h>
-using namespace std;
-#define WORKERS 2
+#define WORKERS 1
 #define BUF_SIZE 8
+#define MAIN_SERVER_PORT 6969
+#define WORKER_SERVER_PORT 7500
+#define MAIN_SERVER_SOURCE "dataset_main.txt"
+#define CLIENT_SOURCE "dataset.txt"
+#define WORKER_SERVER_SOURCE "dataset_worker.txt"
+using namespace std;
 
-struct WorkerParams  //we will send a pointer to structure while creating thread
+struct WorkerParams  //we will send a pointer to this structure while creating thread
 {
 	int split_size;
 	int partno;
 	int portno;
-	
+	const char* ip;
+	double result;
+	char ch[1];
 };
 
+void getIpList(char* iplist[])
+{
+	iplist[0]="127.0.0.1";
+}
 
-int columnExtractor(const char* filePath, int columnNumber,int *values)
+
+
+
+int columnExtractor(const char* filePath, int columnNumber,double **values)
 {
 	char c;
-	values = new int[100000];
+	*values = (double *)malloc(100000*sizeof(double));
 	int k=0;
 	ifstream in;
 	in.open(filePath);
@@ -41,23 +55,23 @@ int columnExtractor(const char* filePath, int columnNumber,int *values)
 	}
 	while(getline(in, line))
     {
+ 		string temp="";
 		int count =0;
 		int j=0;
-		int temp =0;
+//		int temp =0;
 		for(string::iterator it = line.begin(); it!= line.end(); it++){
-			if(*it == 44) count++;
+			if(*it == ',') count++;
 			if(count == columnNumber){
-				if(*it >= '0' && *it <= '9') {
-					temp*=10;
-					temp += *it - '0';					
+				if((*it >= '0' && *it <= '9') || *it=='.') {
+//					temp*=10;
+	//				temp += *it - '0';					
+					temp+=*it;
 				}	
 			}
 		}
-		//cout<<temp<<"\n";
-		values[k++] = temp;
-	}
-	for(int i=0;i<k;i++){
-		cout<<values[i]<<"\n";
+		
+		*(*values+k) = stod(temp);
+		k++;
 	}
 	return k;
 }
@@ -155,6 +169,18 @@ char * toArray(long int number)
 
 }
 
+char * toArray(double number)
+{
+	cout<<number<<endl;
+	char *tmp=(char *)malloc(100*sizeof(char));
+	ostringstream strs;
+	strs << number;
+	string str = strs.str();
+	strncpy(tmp,str.c_str(),sizeof(tmp));
+	tmp[sizeof(tmp)-1]=0;
+	return tmp;
+}
+
 void sendIterationCount(FILE *fp,int sd,string partition)
 {
 	char *arr=NULL;
@@ -177,6 +203,151 @@ void sendIterationCount(FILE *fp,int sd,string partition)
 	arr=toArray(size);
 	send(sd,arr,sizeof(arr),0);
 }
+
+//client
+void printString(char* buf,int size)
+{
+	for(int i=0;i<size;i++)
+		printf("%c",buf[i]);
+}
+
+int writeContentsToBuf(FILE **fp,char *buf,long int bytes_written,int size)
+{
+
+	fread(buf,size,1, *fp); /* Read 1 chunk of size bytes from fp into buffer */
+	return size;
+}
+
+void readSend(FILE* fp,int sd)
+{
+
+	long int bytes_written=0;
+	fseek(fp,0,SEEK_END);
+	long int fsize = ftell(fp);   //total no. of bytes in file
+	rewind(fp);
+	char *buf = (char*) malloc(BUF_SIZE * sizeof(*buf)); //using this same buf
+	
+	for(long int i=0;i<fsize/BUF_SIZE;i++) //full size buffers
+	{
+	 	 if(writeContentsToBuf(&fp,buf,bytes_written,BUF_SIZE) != BUF_SIZE)  //error checking
+	 	 	printf("Bytes read unsuccesful\n");
+	 	 //sleep(0.01);	 	 	
+	 	 int n=send(sd,buf,BUF_SIZE,0);
+	 	 if(n!=BUF_SIZE)
+	 	 	printf("Send unsucessful\n");
+	 	 bytes_written+=BUF_SIZE;
+	 	 fseek(fp,bytes_written,SEEK_SET);
+	}
+	
+	long int leftover = fsize%BUF_SIZE;
+	if(writeContentsToBuf(&fp,buf,bytes_written,leftover)!=leftover)
+		printf("Bytes read unsuccesful\n");	 	 	
+ 		int n=send(sd,buf,leftover,0);
+	if(n!=leftover)
+	 	printf("Send unsucessful\n");
+	 bytes_written+=BUF_SIZE;
+	 free(buf);
+}
+
+//main server
+
+void *startWorker(void * param)
+{
+	cout<<"thread started\n";
+	WorkerParams * p=(WorkerParams *)param;
+	string partition = getPartition(MAIN_SERVER_SOURCE,p->split_size,p->partno); 
+	cout<<"Parititon="<<partition<<endl;
+	cout<<"partition in thread done\n";
+	//create client socket to send data to worker server
+	int sd;
+	struct sockaddr_in addrs;
+	sd=socket(AF_INET, SOCK_STREAM,0);
+	addrs.sin_family=AF_INET;
+	addrs.sin_port=htons(WORKER_SERVER_PORT);
+	addrs.sin_addr.s_addr=inet_addr(p->ip);   //worker server ip address
+	
+	int len=sizeof(addrs);
+	
+	int result=connect(sd,(struct sockaddr *)&addrs,len);
+
+
+	sendIterationCount(NULL,sd,partition);	
+	
+	send(sd,p->ch,sizeof(p->ch),0); //send choice to worker
+	
+	//sending in chunks of 8 bytes  
+	cout<<partition.length()<<endl;
+	char buf[BUF_SIZE];
+	long int k=0,c=0;
+	for(long int i=0;i<partition.length()/BUF_SIZE;i++)
+	{
+		for(int j=0;j<BUF_SIZE;j++)
+		{
+			buf[j]=partition[k];
+			k++;
+		}
+		c++;
+		send(sd,buf,sizeof(buf),0);
+	}
+	cout<<c<<endl;
+	int leftover = partition.length()%BUF_SIZE; 
+	for(int i=0;i<leftover;i++)
+	{
+		buf[i]=partition[k++];
+	}
+	cout<<"\n"<<send(sd,buf,leftover,0);
+	cout<<"Sent";
+	
+	
+	//receive result from individual threads in character array
+	char localResult[100];
+	recv(sd,&localResult,sizeof(localResult),0);
+	printf("in char array %s",localResult);
+	//get double value from char array
+	p->result=strtod(localResult,NULL);
+	cout<<"in double="<<p->result<<endl;
+	
+	pthread_exit(0);
+}
+
+//worker
+/*long response(int query,int *array,int sizeArray,string str[])
+{
+
+	if(ch<=4) //related to column, so we need column extractor
+	{
+		st
+	}
+	switch(query)
+	{
+		case 1:
+			return addColumn();
+		case 2:
+			avgColumn();
+			break;
+		case 3:
+			maxColumn();
+		case 4:
+			minColumn();
+		case 5:
+			sortRows();
+	}
+	int i;
+	char *g;
+	long sum=0;
+	cout<<sizeArray<<endl;
+	if(array)
+	{	
+		if(query==1||query==2)
+		{
+			for(i=0;i<sizeArray;i++)
+			{	
+				sum+=(long)array[i];
+			}
+		}
+		return sum;
+	}
+}*/
 
 
 
